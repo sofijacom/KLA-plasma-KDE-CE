@@ -72,7 +72,7 @@ kdialog ocean-sound-theme khelpcenter ffmpegthumbs fastfetch kdeconnect kunified
 xdg-user-dirs xdg-utils rsync dialog yad breeze-gtk falkon partitionmanager plasma-thunderbolt \
 ttf-nerd-fonts-symbols ttf-droid ttf-hack-nerd kde-gtk-config plasma-vault plasma-pass kdeplasma-addons \
 samba smb4k cifs-utils hddtemp upower tuned tuned-ppd conky kcharselect vi fcitx5-configtool playerctl \
-plasma-applets-weather-widget-3 \
+plasma-applets-weather-widget-3 oxygen gst-plugin-pipewire vokoscreen \
 | xargs -n1 pacman -S --noconfirm --needed --disable-download-timeout
 
 # Create /root/ directories
@@ -537,8 +537,8 @@ locale-gen
 
 ## Create and switch to build directory
 cd /var/cache/pacman/pkg
-wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/libpamac-aur-11.7.0-2-x86_64.pkg.tar.zst
-wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/pamac-aur-11.7.3-1-x86_64.pkg.tar.zst
+wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/pamac-aur-libpamac-aur/libpamac-aur-11.7.3-5-x86_64.pkg.tar.zst
+wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/pamac-aur-libpamac-aur/pamac-aur-11.7.3-4-x86_64.pkg.tar.zst
 wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KDE-plasma-desktop/programs/Pamac-cleaner-cache-1.0.1-1-x86_64.pkg.tar.zst
 wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KDE-plasma-desktop/programs/Packit-1.0.2-1-x86_64.pkg.tar.zst
 wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KDE-plasma-desktop/programs/arch-update-checker-0.10.7-1-x86_64.pkg.tar.zst
@@ -550,7 +550,7 @@ wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KDE-plasma-deskt
 wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KDE-plasma-desktop/programs/Conky-restart-1.0.2-1-any.pkg.tar.zst
 wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KDE-plasma-desktop/programs/Termv-1.4.1-1-x86_64.pkg.tar.zst
 wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KDE-plasma-desktop/programs/YRadio-1.8.1-1-x86_64.pkg.tar.zst
-echo libpamac-aur-11.7.0-2-x86_64.pkg.tar.zst pamac-aur-11.7.3-1-x86_64.pkg.tar.zst \
+echo libpamac-aur-11.7.3-5-x86_64.pkg.tar.zst pamac-aur-11.7.3-4-x86_64.pkg.tar.zst \
 Pamac-cleaner-cache-1.0.1-1-x86_64.pkg.tar.zst Packit-1.0.2-1-x86_64.pkg.tar.zst \
 arch-update-checker-0.10.7-1-x86_64.pkg.tar.zst oh-my-zsh-1.1.1-1-x86_64.pkg.tar.zst yay-12.4.2-1-x86_64.pkg.tar \
 Conky-config-1.0.1-1-any.pkg.tar.zst hardinfo2-2.2.4-1-x86_64.pkg.tar.zst save2flash-1.8.0-1-x86_64.pkg.tar.zst \
@@ -609,8 +609,8 @@ ln -s /usr/lib/systemd/system/cups.service /etc/systemd/system/multi-user.target
 ln -s /usr/lib/systemd/system/cups.socket /etc/systemd/system/sockets.target.wants/cups.socket
 ln -s /usr/lib/systemd/system/cups.path /etc/systemd/system/multi-user.target.wants/cups.path
 
-# pipewire pipewire-pulse wireplumber - service
-# systemctl enable --user pipewire pipewire-pulse wireplumber 
+# pipewire pipewire-pulse wireplumber - service / gst-plugin-pipewire
+# systemctl enable --user pipewire pipewire-pulse wireplumber
 mkdir -p /home/spot/.config/systemd/user
 mkdir -p /home/spot/.config/systemd/user/default.target.wants
 ln -s /usr/lib/systemd/user/pipewire.service /home/spot/.config/systemd/user/default.target.wants/pipewire.service
