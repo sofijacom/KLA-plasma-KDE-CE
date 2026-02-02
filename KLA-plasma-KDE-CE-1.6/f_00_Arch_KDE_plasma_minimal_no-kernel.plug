@@ -1,0 +1,686 @@
+###### f_00_Arch_KDE_plasma_no-kernel.plug version 1.0
+# Revision Date: 01.11.2024
+# Copyright wiak (William McEwan) 30 May 2019+; Licence MIT (aka X11 license)
+#    for use with build_firstrib_rootfs_XXX.sh to build:
+# ./build_firstrib_rootfs.sh arch default amd64 f_00_Arch_KDE_plasma_minimal_no-kernel.plug
+
+# Some clean up from previous runs in case build_firstrib_rootfs or
+# make00<distro>XXX being re-run to fetch packages that failed owing
+# to repo timeouts or whatever (wiak remove: this and some other tweaks in script below may not be enough to guarantee correct second run - not sure):
+[ -d /etc/skel ] && rm -rf /etc/skel
+#userdel -f firstrib
+#[ -d /home/firstrib ] && rm -rf /home/firstrib
+userdel -f spot
+[ -d /home/spot ] && rm -rf /home/spot
+
+### START package manager install---------------------------------------
+# Note ESSENTIAL; need full wget since busybox wget can't handle https
+pacman -Syu
+echo wget \
+| xargs -n1 pacman -S --noconfirm --needed --disable-download-timeout
+
+## EXPERIMENTAL: Force pacman to use wget -c rather than it's default mode to make more robust against timeouts - wiak remove NO LONGER SEEMS TO WORK SO COMMENTING OUT
+#if ! grep -q '^XferCommand = /usr/bin/wget' /etc/pacman.conf; then
+# sed -i '/XferCommand = \/usr\/bin\/wget/a XferCommand = /usr/bin/wget --passive-ftp -c -O %o %u' /etc/pacman.conf
+#fi
+
+## install some MAIN packages including wpa_supplicant and busybox for wifi connectivity
+# PROBABLY BEST TO TREAT AS ESSENTIAL
+echo tzdata systemd-sysvcompat dosfstools mtools procps-ng which wpa_supplicant busybox ntfs-3g \
+| xargs -n1 pacman -S --noconfirm --needed --disable-download-timeout
+
+# Make some network-related applet symlinks for above busybox
+cd /usr/bin; ln -s busybox ash; ln -s /usr/lib/systemd/systemd init  # wiak remove: recently seemed to need this link to systemd
+# Hopefully not required...: ln -s busybox ip; ln -s busybox route; ln -s busybox ifconfig; ln -s busybox ping; ln -s busybox udhcpc;
+cd ../..
+
+## install OPTIONAL KERNEL/MODULES/FIRMWARE
+# NOTE: leave linux and linux-firmware out for huge kernel builds such as kernel from KLV-Airedale:
+# When pacman installs linux this scripts uses default mkinitcpio option
+# Also provides modules optionally required by later FirstRib initramfs build
+# echo linux linux-firmware sof-firmware \
+# | xargs -n1 pacman -S --noconfirm --needed --disable-download-timeout
+echo sof-firmware \
+| xargs -n1 pacman -S --noconfirm --needed --disable-download-timeout
+
+# Ignore kernel upgrade during future pacman -Syu
+# Note: if desired to upgrade kernel+related-modules you also have to do change the modules used by initrd as well.
+# Easy if using huge kernel KLA-type mechanism though - otherwise need to uncompress/recompress initrd
+# Surrounding such sed lines with if check, so only done once if script re-run - wiak: to check such measures throughout script
+if ! grep -q 'IgnorePkg = linux Packit oh-my-zsh Pamac-cleaner-cache Conky-config arch-update-checker save2flash' /etc/pacman.conf; then
+  sed -i '/#IgnorePkg/ a IgnorePkg = linux Packit oh-my-zsh Pamac-cleaner-cache Conky-config arch-update-checker save2flash' /etc/pacman.conf
+fi
+
+## install NON-GUI APPS SELECTION
+# Changing this selection may require you to also edit desktop apps menu
+# PROBABLY BEST TO TREAT AS ESSENTIAL
+# Changelog from rc2; user can optionally re-install: base-devel 
+# для терминала zsh (zsh-autosuggestions zsh-syntax-highlighting) networkmanager-qt xdg-desktop-portal-kde
+# plasma-nm plasma-pa plasma-welcome flatpak-kcm plasma-systemmonitor plasma-workspace kde-gtk-config
+# oxygen kwallet kwalletmanager plasma-thunderbolt kunifiedpush plasma-disks kdf
+# # sudo pacman -Syu samba smb4k cifs-utils / smbclient -U% -L localhost
+
+echo sudo pciutils cpio zstd iproute2 file exfatprogs acpid \
+squashfs-tools usleep usbutils gettext jq mtpaint kdf kgamma cryfs encfs \
+pipewire wireplumber pamixer pipewire-pulse pipewire-alsa qpwgraph plasma-pa kcron \
+bluez bluez-utils bluez-deprecated-tools bluedevil bluez-obex networkmanager discover plasma-welcome \
+mpv gufw cups cups-pdf system-config-printer print-manager git spectacle plasma-firewall \
+konsole dolphin dolphin-plugins kate flatpak-kcm plasma-systemmonitor kinfocenter krdp krdc krfb \
+gvfs gvfs-smb gvfs-mtp xterm xdialog xdotool kweather kscreen okular kwalletmanager \
+unrar xz zip unzip p7zip ark kcalc gwenview kcolorchooser isoimagewriter plasma-disks \
+kdialog ocean-sound-theme khelpcenter ffmpegthumbs fastfetch kdeconnect kunifiedpush \
+xdg-user-dirs xdg-utils rsync dialog yad breeze-gtk falkon partitionmanager plasma-thunderbolt \
+ttf-nerd-fonts-symbols ttf-droid ttf-hack-nerd kde-gtk-config plasma-vault plasma-pass kdeplasma-addons \
+samba smb4k cifs-utils hddtemp upower tuned tuned-ppd conky kcharselect vi fcitx5-configtool playerctl \
+plasma-applets-weather-widget-3 oxygen gst-plugin-pipewire vokoscreen hardinfo2 \
+| xargs -n1 pacman -S --noconfirm --needed --disable-download-timeout
+
+# Create /root/ directories
+#
+mkdir -p /root/Desktop
+mkdir -p /root/Documents
+mkdir -p /root/Downloads
+mkdir -p /root/Music
+#mkdir -p /root/my-applications
+mkdir -p /root/Pictures
+mkdir -p /root/Public
+mkdir -p /root/Startup
+mkdir -p /root/Templates
+mkdir -p /root/Videos
+
+# Create /home/spot directories
+#
+mkdir -p /home/spot/Desktop
+mkdir -p /home/spot/Documents
+mkdir -p /home/spot/Downloads
+mkdir -p /home/spot/Music
+#mkdir -p /home/spot/my-applications
+mkdir -p /home/spot/Pictures
+mkdir -p /home/spot/Public
+mkdir -p /home/spot/Startup
+mkdir -p /home/spot/Templates
+mkdir -p /home/spot/Videos
+
+# /home/spot/.Xresources for larger xterm uxterm fonts
+touch /home/spot/.Xresources
+cat <<'XRESOURCES' >> /home/spot/.Xresources
+Xft*antialias: true
+Xft*autohint: true
+XTerm*background: black
+XTerm*foreground: grey
+XTerm*cursorColor: grey
+XTerm.vt100.geometry: 95x25+150
+XTerm.vt100.scrollBar: true
+XTerm.vt100.scrollbar.width: 8
+XTerm*faceName: Monospace Regular
+XTerm*faceSize: 9
+
+UXft*antialias: true
+UXft*autohint: true
+UXTerm*background: #002b36
+UXTerm*foreground: #839496
+UXTerm*cursorColor: grey
+UXTerm.vt100.geometry: 84x25+150
+UXTerm*faceName: Monospace Regular
+UXTerm*faceSize: 8
+XRESOURCES
+
+## install DESKTOP MANAGER
+# echo plasma-meta kde-applications-meta xorg kio-admin sddm \
+# echo plasma-meta xorg kio-admin sddm \
+echo plasma-desktop xorg kio-admin sddm sddm-kcm plasma-x11-session kwin-x11 \
+| xargs -n1 pacman -S --noconfirm --needed --disable-download-timeout
+
+### START GENERAL CONFIGURATION-----------------------------------------
+pwconv
+grpconv
+printf "root\nroot\n" | passwd >/dev/null 2>&1 # Quietly set default root passwd to "root"
+# set root to use /bin/bash
+usermod --shell /bin/bash root
+
+# enable NetworkManager
+# systemctl enable NetworkManager
+systemctl enable NetworkManager.service
+
+# Add ~/Startup directory
+#
+# mkdir -p /home/spot/Startup
+cat <<'EOF' >> /usr/local/bin/start-up
+#!/bin/bash
+sleep 3
+user_home=$(eval echo ~${SUDO_USER})
+ls $user_home/Startup/* | while read J
+do
+   "$J" &
+done
+EOF
+
+chmod +x /usr/local/bin/start-up
+
+# Add /home/spot/.config/autostart
+#
+mkdir -p /home/spot/.config/autostart
+cat <<'EOF' >> /home/spot/.config/autostart/start-up.desktop
+[Desktop Entry]
+Exec=/usr/local/bin/start-up
+Icon=application-x-shellscript
+Name=start-up
+Type=Application
+X-KDE-AutostartScript=true
+EOF
+
+# Conky
+#
+cat <<'EOF' >> /home/spot/.config/autostart/conky.desktop
+[Desktop Entry]
+Categories=System;Monitor;
+Exec=conky --daemonize --pause=1
+Icon=conky-logomark-violet
+Name=conky
+StartupNotify=false
+Terminal=false
+Type=Application
+EOF
+
+# Add /etc/hostname
+touch /etc/hostname
+cat <<'EOF' >> /etc/hostname
+archlinux
+EOF
+
+# Add /etc/hosts
+cat <<'EOF' >> /etc/hosts
+# Static table lookup for hostnames.
+# See hosts(5) for details.arch linux
+127.0.0.1 localhost archlinux
+::1 localhost archlinux
+EOF
+
+# Add .profile
+#
+touch /home/spot/.profile
+cat <<'USERPROFILE' >> /home/spot/.profile
+# ~/.profile
+#
+#    _____            __ _ _
+#   |  __ \          / _(_) |
+#   | |__) | __ ___ | |_ _| | ___
+#   |  ___/ '__/ _ \|  _| | |/ _ \
+#  _| |   | | | (_) | | | | |  __/
+# (_)_|   |_|  \___/|_| |_|_|\___| Arch
+#
+# By Sofiya
+#
+
+# if running bash
+if [ -n "$BASH_VERSION" ]; then
+    # include .bashrc if it exists
+    if [ -f "$HOME/.bashrc" ]; then
+	. "$HOME/.bashrc"
+    fi
+fi
+
+# set PATH so it includes user's private bin if it exists
+if [ -d "$HOME/bin" ] ; then
+    PATH="$HOME/bin:$PATH"
+fi
+
+# set PATH so it includes user's private bin if it exists
+if [ -d "$HOME/.local/bin" ] ; then
+    PATH="$HOME/.local/bin:$PATH"
+fi
+
+USERPROFILE
+
+# Arrange to startx in user's .profile (per Arch Wiki)
+# Remove this section if not wanting boot straight into X
+touch /home/spot/.bash_profile
+if ! grep -q 'graphical.target' /home/spot/.bash_profile; then
+cat <<'USERBASHPROFILE' >> /home/spot/.bash_profile
+# .bash_profile
+#    _               _                            __ _ _
+#   | |__   __ _ ___| |__        _ __  _ __ ___  / _(_) | ___
+#   | '_ \ / _` / __| '_ \      | '_ \| '__/ _ \| |_| | |/ _ \
+#  _| |_) | (_| \__ \ | | |     | |_) | | | (_) |  _| | |  __/
+# (_)_.__/ \__,_|___/_| |_|     | .__/|_|  \___/|_| |_|_|\___| Arch
+#                          ==== |_|
+#
+# By Sofiya
+#
+# Get the aliases and functions
+[ -f $HOME/.bashrc ] && . $HOME/.bashrc
+
+USERBASHPROFILE
+fi
+
+# Add .bash_logout
+touch /home/spot/.bash_logout
+cat <<'USERBASHLOGOUT' >> /home/spot/.bash_logout
+#    _               _              _                         _
+#   | |             | |            | |                       | |
+#   | |__   __ _ ___| |__          | | ___   __ _  ___  _   _| |_
+#   | '_ \ / _` / __| '_ \         | |/ _ \ / _` |/ _ \| | | | __|
+#  _| |_) | (_| \__ \ | | | ______ | | (_) | (_| | (_) | |_| | |_
+# (_)_.__/ \__,_|___/_| |_||______||_|\___/ \__, |\___/ \__,_|\__| Arch
+#                                             __/ |
+#                                            |___/
+#
+# By Sofiya
+#
+# ~/.bash_logout
+#
+
+USERBASHLOGOUT
+
+# Add .bashrc
+touch /home/spot/.bashrc
+cat <<'GKS' >> /home/spot/.bashrc
+#
+# /etc/bash.bashrc
+#
+#     _               _
+#    | |             | |
+#    | |__   __ _ ___| |__  _ __ ___
+#    | '_ \ / _` / __| '_ \| '__/ __|
+#   _| |_) | (_| \__ \ | | | | | (__
+#  (_)_.__/ \__,_|___/_| |_|_|  \___| Arch
+#
+# By Sofiya
+#
+#pfetch
+fastfetch
+
+# If not running interactively, don't do anything
+[[ $- != *i* ]] && return
+
+[[ $DISPLAY ]] && shopt -s checkwinsize
+
+PS1="\[\e[0;36m\]┌──\[\e[0m\][ \[\e[0;33m\]\u\[\e[0m\]\[\e[0;32m\]@\[\e[0;36m\]\h\[\e[0m\] ] [ \[\e[0;36m\]\t\[\e[0m\] ]\n\[\e[0;36m\]├── \[\e[0;32m\]\w\[\e[0;36m\]\n\[\e[0;36m\]└>\[\e[0m\] "
+
+case ${TERM} in
+  Eterm*|alacritty*|aterm*|foot*|gnome*|konsole*|kterm*|putty*|rxvt*|tmux*|xterm*)
+    PROMPT_COMMAND+=('printf "\033]0;%s@%s:%s\007" "${USER}" "${HOSTNAME%%.*}" "${PWD/#$HOME/\~}"')
+
+    ;;
+  screen*)
+    PROMPT_COMMAND+=('printf "\033_%s@%s:%s\033\\" "${USER}" "${HOSTNAME%%.*}" "${PWD/#$HOME/\~}"')
+    ;;
+esac
+
+if [[ -r /usr/share/bash-completion/bash_completion ]]; then
+  . /usr/share/bash-completion/bash_completion
+fi
+
+#if [[ $(ps --no-header --pid=$PPID --format=comm) != "fish" && -z ${BASH_EXECUTION_STRING} ]]
+#then
+#	exec fish
+#fi
+
+zsh
+GKS
+
+# FASTFETCH
+mkdir -p /home/spot/.config/fastfetch
+cat <<'GKS' >> /home/spot/.config/fastfetch/config.jsonc
+//
+//    __          _    __     _       _
+//   / _|        | |  / _|   | |     | |
+//  | |_ __ _ ___| |_| |_ ___| |_ ___| |__
+//  |  _/ _` / __| __|  _/ _ \ __/ __| '_ \
+//  | || (_| \__ \ |_| ||  __/ || (__| | | |
+//  |_| \__,_|___/\__|_| \___|\__\___|_| |_| Arch
+//
+//  by Sofiya
+//
+// ttf-nerd-fonts-symbols , Hack-Nerd-Font
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "logo": {
+	"color": {"1": "blue", "2": "black"}
+  },
+  "display": {
+	"separator": " ▸ "
+  },
+  "modules": [
+    {
+	"type": "title"
+    },
+    "break",
+    {
+	"type": "custom",
+	"format": "\u001b[90m┌────────────────────────────────────────────────────────────┐"
+    },
+    {
+	"type": "os",
+	"key": "",
+	"keycolor": "blue"
+    },
+    {
+	"type": "kernel",
+	"key": "",
+	"keycolor": "blue"
+    },
+    {
+	"type": "de",
+	"key": "",
+	"keycolor": "blue"
+    },
+    {
+	"type": "wm",
+	"key": "",
+	"keycolor": "blue"
+    },
+    {
+	"type": "packages",
+	"key": "",
+	"keycolor": "blue"
+    },
+    {
+	"type": "custom",
+	"format": "\u001b[90m├─────────────────────────────────────────────────────────────┤"
+    },
+    {
+	"type": "memory",
+	"key": "",
+	"keycolor": "blue"
+    },
+    {
+	"type": "cpu",
+	"key": "",
+	"keycolor": "blue"
+    },
+    {
+	"type": "gpu",
+	"key": "",
+	"keycolor": "blue"
+    },
+    {
+	"type": "swap",
+	"key": "",
+	"keycolor": "blue"
+    },
+    {
+	"type": "disk",
+	"key": "",
+	"keycolor": "blue"
+    },
+    {
+	"type": "battery",
+	"key": "",
+	"keycolor": "blue"
+    },
+    {
+	"type": "custom",
+	"format": "\u001b[90m├─────────────────────────────────────────────────────────────┤"
+    },
+    {
+	"type": "uptime",
+	"key": "",
+	"keycolor": "blue"
+    },
+    {
+	"type": "terminal",
+	"key": "",
+	"keycolor": "blue"
+    },
+    {
+	"type": "custom",
+	"format": "\u001b[90m└────────────────────────────────────────────────────────────┘"
+    },
+    {
+	"type": "colors",
+	"paddingLeft": 25,
+	"symbol": "circle",
+	"block": {
+	"width": 10
+	}
+    }
+  ]
+}
+GKS
+
+# SAMBA
+cat <<'GKS' >> /etc/samba/smb.conf
+#this is a very simple smb.conf to get you started
+#coutesy rcrsn51 and gcmartin
+[global]
+	workgroup = Workgroup
+	netbios name = arch-live
+	server string = KLA-Plasma-kde Server
+	security = user
+	map to guest = Bad Password
+	printing = cups
+	printcap name = cups
+	load printers = yes
+	client min protocol = NT1
+    server min protocol = LANMAN1
+
+[smb4k]
+	path = /home/spot/smb4k
+	writable = yes
+
+
+[printers]
+	comment = All Printers
+	path = /var/spool/samba
+	browseable = no
+	guest ok = yes
+	writable = no
+	printable = yes
+
+GKS
+
+# SAMBA README.md
+cat <<'README' >> /etc/samba/README.md
+1. Now, enable and start smb.service and nmb.service:
+
+sudo systemctl start smb
+sudo systemctl enable smb
+sudo systemctl start nmb
+sudo systemctl enable nmb
+
+2. Create a user group:
+
+sudo groupadd -r sambauser
+
+3. Add the user1 to the sambauser group:
+
+sudo gpasswd sambauser -a spot
+
+4. Now create samba share user:
+
+sudo smbpasswd -a spot
+
+New SMB password: <input password >
+Retype new SMB password: <repeat password>
+
+5. check connection status:
+
+sudo systemctl status smb
+sudo systemctl status nmb
+
+6. Restart smb.service and nmb.service services:
+
+sudo systemctl restart smb
+sudo systemctl restart nmb
+
+README
+
+# save2flash
+mkdir -p /home/spot/.local/share/applications
+cat <<'EOF' >> /home/spot/.local/share/applications/save2flash.desktop
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Name=save2flash
+Comment=save RAM2 to media
+Exec=sudo save2flash
+Terminal=false
+Icon=system-save-session
+Type=Application
+Categories=Utility;System;Modules;
+EOF
+
+# Set locale to en_US.UTF-8 
+sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+sed -i 's/LANG="C.UTF-8/#LANG="C.UTF-8/' /etc/locale.conf
+echo "LANG=en_US.UTF-8" >> /etc/locale.conf
+echo "LANG=en_US.UTF-8" >> /etc/environment
+locale-gen
+
+#-----------------------------------------------------------------------
+
+## Install Save2flash
+# wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KLA-Hyprland/Arch-save2flash/save2flash.tar.xz -O /save2flash.tar.xz
+# tar xJf /save2flash.tar.xz && rm /save2flash.tar.xz
+
+#-----------------------------------------------------------------------
+
+## Create and switch to build directory
+cd /var/cache/pacman/pkg
+wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/pamac-aur-libpamac-aur/libpamac-aur-11.7.4-2-x86_64.pkg.tar.zst
+wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/pamac-aur-libpamac-aur/pamac-aur-11.7.4-2-x86_64.pkg.tar.zst
+wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KDE-plasma-desktop/programs/Pamac-cleaner-cache-1.0.1-1-x86_64.pkg.tar.zst
+wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KDE-plasma-desktop/programs/Packit-1.0.2-1-x86_64.pkg.tar.zst
+wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KDE-plasma-desktop/programs/arch-update-checker-0.10.7-1-x86_64.pkg.tar.zst
+wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KDE-plasma-desktop/programs/oh-my-zsh-1.1.1-1-x86_64.pkg.tar.zst
+wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KDE-plasma-desktop/programs/Conky-config-1.0.1-1-any.pkg.tar.zst
+wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KDE-plasma-desktop/programs/save2flash-1.8.0-1-x86_64.pkg.tar.zst
+wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KDE-plasma-desktop/programs/Conky-restart-1.0.2-1-any.pkg.tar.zst
+wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KDE-plasma-desktop/programs/Termv-1.4.1-1-x86_64.pkg.tar.zst
+wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/Arch-KDE-plasma-desktop/programs/YRadio-1.8.1-1-x86_64.pkg.tar.zst
+wget -c https://gitlab.com/sofija.p2018/kla-ot2/-/raw/main/yay-12.5.7-1-x86_64.pkg.tar.zst
+
+echo libpamac-aur-11.7.4-2-x86_64.pkg.tar.zst pamac-aur-11.7.4-2-x86_64.pkg.tar.zst \
+Pamac-cleaner-cache-1.0.1-1-x86_64.pkg.tar.zst Packit-1.0.2-1-x86_64.pkg.tar.zst \
+arch-update-checker-0.10.7-1-x86_64.pkg.tar.zst oh-my-zsh-1.1.1-1-x86_64.pkg.tar.zst yay-12.5.7-1-x86_64.pkg.tar.zst \
+Conky-config-1.0.1-1-any.pkg.tar.zst save2flash-1.8.0-1-x86_64.pkg.tar.zst \
+Conky-restart-1.0.2-1-any.pkg.tar.zst Termv-1.4.1-1-x86_64.pkg.tar.zst YRadio-1.8.1-1-x86_64.pkg.tar.zst \
+| xargs -n1 pacman -U --noconfirm --needed --disable-download-timeout
+
+### END usrlocalbin scripts---------------------------------------------
+
+# Configure system for multi-users
+#
+cp -af /root/. /etc/skel
+mkdir -p /etc/skel/.config /etc/skel/.cache /etc/skel/.local/share
+#
+# Create user spot and put in wheel group (and more) and give wheel group nopasswd sudo rights
+echo '%wheel ALL=(ALL) NOPASSWD: ALL' | (VISUAL="tee -a" visudo) # wheel group added to sudo no password required
+useradd -m -G audio,video,wheel,storage -s /bin/bash spot
+printf "spot\nspot" | passwd spot >/dev/null 2>&1 # Quietly set default spot passwd to "spot"
+
+# Give wheel group nopasswd sudo rights and create firstrib as wheel group member
+# PREV (was wrong I think...): groupadd sudo && 
+# echo '%wheel ALL=(ALL) NOPASSWD: ALL' | (VISUAL="tee -a" visudo) # wheel group added to sudo no password required
+# useradd -m -G audio,video,wheel,storage -s /bin/bash firstrib  # firstrib in wheel group so has elevated sudo permissions
+# printf "firstrib\nfirstrib" | passwd firstrib >/dev/null 2>&1 # Quietly set default firstrib passwd to "firstrib"
+
+##----------------------------------------------------------------------
+
+# Restore busybox network-related links if required
+# If required the following should, I think, be done at very end of 
+# plugin to avoid conflicts with any pacman network-related app installs
+cd /usr/bin; ln -s busybox ip; ln -s busybox route; ln -s busybox ifconfig; ln -s busybox arp; ln -s busybox ping; ln -s busybox udhcpc
+cd ../..
+
+# Empty pacman pkg cache
+printf "%s\n%s\n" y y | pacman -Scc
+
+# Set permissions
+#chown -R firstrib:firstrib /home/firstrib
+chown -R spot:spot /home/spot
+
+# Add users to groups and change permissions
+chmod 755 /
+chmod 755 /bin
+chmod 755 /lib
+
+# Avahi-daemon autostart
+# enable systemd avahi-daemon.service / avahi-daemon.socket / dbus-org.freedesktop.Avahi.service
+ln -s /usr/lib/systemd/system/avahi-daemon.service /etc/systemd/system/multi-user.target.wants/
+ln -s /usr/lib/systemd/system/avahi-daemon.service /etc/systemd/system/dbus-org.freedesktop.Avahi.service
+mkdir -p /etc/systemd/system/sockets.target.wants
+ln -s /usr/lib/systemd/system/avahi-daemon.socket /etc/systemd/system/sockets.target.wants/
+
+# systemctl enable cups.service / systemctl start cups.service
+mkdir -p /etc/systemd/system/printer.target.wants
+ln -s /usr/lib/systemd/system/cups.service /etc/systemd/system/printer.target.wants/cups.service
+ln -s /usr/lib/systemd/system/cups.service /etc/systemd/system/multi-user.target.wants/cups.service
+ln -s /usr/lib/systemd/system/cups.socket /etc/systemd/system/sockets.target.wants/cups.socket
+ln -s /usr/lib/systemd/system/cups.path /etc/systemd/system/multi-user.target.wants/cups.path
+
+# pipewire pipewire-pulse wireplumber - service / gst-plugin-pipewire
+# systemctl enable --user pipewire pipewire-pulse wireplumber
+mkdir -p /home/spot/.config/systemd/user
+mkdir -p /home/spot/.config/systemd/user/default.target.wants
+ln -s /usr/lib/systemd/user/pipewire.service /home/spot/.config/systemd/user/default.target.wants/pipewire.service
+mkdir -p /home/spot/.config/systemd/user/sockets.target.wants
+ln -s /usr/lib/systemd/user/pipewire.socket /home/spot/.config/systemd/user/sockets.target.wants/pipewire.socket
+ln -s /usr/lib/systemd/user/pipewire-pulse.service /home/spot/.config/systemd/user/default.target.wants/pipewire-pulse.service
+ln -s /usr/lib/systemd/user/pipewire-pulse.socket /home/spot/.config/systemd/user/sockets.target.wants/pipewire-pulse.socket
+ln -s /usr/lib/systemd/user/wireplumber.service /home/spot/.config/systemd/user/pipewire-session-manager.service
+mkdir -p /home/spot/.config/systemd/user/pipewire.service.wants
+ln -s /usr/lib/systemd/user/wireplumber.service /home/spot/.config/systemd/user/pipewire.service.wants/wireplumber.service
+
+# Bluetooth (systemctl enable bluetooth)
+# add blueman to autostart and activate systemd bluetooth module
+ln -s /usr/lib/systemd/system/bluetooth.service /etc/systemd/system/dbus-org.bluez.service
+mkdir -p /etc/systemd/system/bluetooth.target.wants
+ln -s /usr/lib/systemd/system/bluetooth.service /etc/systemd/system/bluetooth.target.wants/bluetooth.service 
+
+# power-profiles-daemon
+# systemctl enable power-profiles-daemon.service
+# sudo systemctl status power-profiles-daemon
+# powerprofilesctl set power-saver / balanced #change selected profile
+# powerprofilesctl #check what mode is being used
+# systemctl unmask power-profiles-daemon.service
+# mkdir -p /etc/systemd/system/graphical.target.wants
+# /usr/lib/systemd/system/power-profiles-daemon.service /etc/systemd/system/graphical.target.wants/power-profiles-daemon.service
+
+# tuned tuned-ppd / systemctl enable tuned.service / systemctl enable tuned-ppd.service
+mkdir -p /etc/systemd/system/graphical.target.wants
+ln -s /usr/lib/systemd/system/tuned.service /etc/systemd/system/multi-user.target.wants/tuned.service
+ln -s /usr/lib/systemd/system/tuned-ppd.service /etc/systemd/system/graphical.target.wants/tuned-ppd.service
+
+# Upower / systemctl enable upower.service
+ln -s /usr/lib/systemd/system/upower.service /etc/systemd/system/graphical.target.wants/upower.service
+
+# systemctl enable ufw 
+ln -s /usr/lib/systemd/system/ufw.service /etc/systemd/system/multi-user.target.wants/ufw.service
+
+systemctl enable saveatshutdown.service
+ln -s /usr/lib/systemd/system/saveatshutdown.service /etc/systemd/system/multi-user.target.wants/saveatshutdown.service
+
+# Enable sddm / systemctl enable sddm.service
+ln -s /usr/lib/systemd/system/sddm.service /etc/systemd/system/display-manager.service
+
+# Hardinfo2
+mkdir -p /etc/systemd/system/basic.target.wants
+ln -s /usr/lib/systemd/system/hardinfo2.service /etc/systemd/system/basic.target.wants/hardinfo2.service
+
+# Samba
+# sudo systemctl start smb
+# sudo systemctl enable smb
+# sudo systemctl start nmb
+# sudo systemctl enable nmb
+groupadd -r sambauser
+gpasswd sambauser -a spot
+# Now create samba share user:
+# sudo smbpasswd -a spot
+# New SMB password: <input password >
+# Retype new SMB password: <repeat password>
+ln -s /usr/lib/systemd/system/smb.service /etc/systemd/system/multi-user.target.wants/smb.service
+ln -s /usr/lib/systemd/system/nmb.service /etc/systemd/system/multi-user.target.wants/nmb.service
+
+# Set permissions
+#chown -R firstrib:firstrib /home/firstrib
+chown -R spot:spot /home/spot
+
+# TIMEZONE SETUP
+# enable systemd systemd-timesyncd.service
+mkdir -p /etc/systemd/system/sysinit.target.wants
+ln -s /usr/lib/systemd/system/systemd-timesyncd.service /etc/systemd/system/sysinit.target.wants/systemd-timesyncd.service
+
+current_timezone="Etc/UTC"
+ln -sf /usr/share/zoneinfo/${current_timezone} /etc/localtime
+
