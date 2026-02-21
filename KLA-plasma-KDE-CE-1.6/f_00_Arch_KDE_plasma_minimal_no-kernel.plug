@@ -58,7 +58,8 @@ fi
 # для терминала zsh (zsh-autosuggestions zsh-syntax-highlighting) networkmanager-qt xdg-desktop-portal-kde
 # plasma-nm plasma-pa plasma-welcome flatpak-kcm plasma-systemmonitor plasma-workspace kde-gtk-config
 # oxygen kwallet kwalletmanager plasma-thunderbolt kunifiedpush plasma-disks kdf
-# # sudo pacman -Syu samba smb4k cifs-utils / smbclient -U% -L localhost
+# sudo pacman -Syu samba smb4k cifs-utils / smbclient -U% -L localhost
+# intel-media-driver libva-intel-driver linux-firmware-intel vulkan-intel vulkan-icd-loader
 
 echo sudo pciutils cpio zstd iproute2 file exfatprogs acpid \
 squashfs-tools usleep usbutils gettext jq mtpaint kdf kgamma cryfs encfs \
@@ -73,6 +74,7 @@ xdg-user-dirs xdg-utils rsync dialog yad breeze-gtk falkon partitionmanager plas
 ttf-nerd-fonts-symbols ttf-droid ttf-hack-nerd kde-gtk-config plasma-vault plasma-pass kdeplasma-addons \
 samba smb4k cifs-utils hddtemp upower tuned tuned-ppd conky kcharselect vi fcitx5-configtool playerctl \
 plasma-applets-weather-widget-3 oxygen gst-plugin-pipewire vokoscreen hardinfo2 \
+vulkan-intel vulkan-icd-loader \
 | xargs -n1 pacman -S --noconfirm --needed --disable-download-timeout
 
 # Create /root/ directories
